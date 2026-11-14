@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <title>double click on the songs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Economica:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --paper: #faf1ed;
+        --ink: #1A1816;
+        --gutter: clamp(24px, 6vw, 48px);
+        --field-space: 96px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #1A1816;
+          --ink: #faf1ed;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
+
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Economica", "Arial Narrow", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        transition: background-color 320ms ease, color 320ms ease;
+      }
+
+      /* Home */
+
+      #home {
+        position: relative;
+        height: var(--vh, 100dvh);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 0 var(--gutter);
+      }
+
+      #home,
+      #song {
+        opacity: 1;
+        transform: none;
+        transition: opacity 260ms ease, transform 340ms cubic-bezier(0.2, 0.7, 0.3, 1),
+          visibility 0s, background-color 320ms ease;
+      }
+
+      #home.hide,
+      #song.hide {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition-delay: 0s, 0s, 260ms, 0s;
+      }
+
+      #home.hide {
+        transform: translateY(-12px);
+      }
+
+      #song.hide {
+        transform: translateY(16px);
+      }
+
+      .search-wrap {
+        width: 100%;
+        max-width: 560px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        max-height: 100%;
+      }
+
+      .results-area {
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Auto margin bottom-aligns a short list and collapses once it overflows */
+      .results-stack {
+        width: 100%;
+        margin-top: auto;
+      }
+
+      /* Active: the field drops to the bottom and the list fills the space above it */
+
+      #home.active {
+        justify-content: flex-end;
+      }
+
+      #home.active .search-wrap {
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+
+      #home.active .results-area {
+        flex: 1 1 auto;
+        padding-bottom: calc(var(--field-space) + 18px);
+        -webkit-mask-image: linear-gradient(
+          to bottom,
+          #000 0,
+          #000 calc(100% - var(--field-space)),
+          transparent 100%
+        );
+        mask-image: linear-gradient(
+          to bottom,
+          #000 0,
+          #000 calc(100% - var(--field-space)),
+          transparent 100%
+        );
+      }
+
+      #home.active .field {
+        bottom: 24px;
+        transform: translateY(0);
+      }
+
+      .field {
+        position: absolute;
+        z-index: 5;
+        left: var(--gutter);
+        right: var(--gutter);
+        bottom: 50%;
+        max-width: 560px;
+        margin: 0 auto;
+        transform: translateY(50%);
+        display: flex;
+        min-height: 51px;
+        padding: 12px 16px;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        align-self: stretch;
+        border-radius: 24px;
+        border: 2px solid var(--ink);
+        background: color-mix(in srgb, var(--ink) 8%, var(--paper));
+        transition: bottom 420ms cubic-bezier(0.2, 0.7, 0.3, 1),
+          transform 420ms cubic-bezier(0.2, 0.7, 0.3, 1),
+          background-color 320ms ease, border-color 320ms ease;
+      }
+
+      .field svg {
+        flex: none;
+        opacity: 0.65;
+      }
+
+      .field input {
+        flex: 1;
+        min-width: 0;
+        border: none;
+        outline: none;
+        background: transparent;
+        color: var(--ink);
+        font-family: inherit;
+        font-size: 28px;
+        line-height: 1.15;
+        padding: 0;
+      }
+
+      .field input::placeholder {
+        color: color-mix(in srgb, var(--ink) 55%, var(--paper));
+      }
+
+      .field input::-webkit-search-cancel-button {
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      .clear {
+        flex: none;
+        padding: 0;
+        border: none;
+        background: none;
+        color: var(--ink);
+        line-height: 0;
+        cursor: pointer;
+        opacity: 0;
+        transform: scale(0.7);
+        pointer-events: none;
+        transition: opacity 180ms ease, transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1);
+      }
+
+      .field.filled .clear {
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+      }
+
+      #results {
+        margin: 0;
+      }
+
+      #results li {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 12px 18px;
+        cursor: pointer;
+        animation: row-in 260ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+        transition: opacity 160ms ease;
+      }
+
+      #results li:active {
+        opacity: 0.55;
+      }
+
+      @keyframes row-in {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+      }
+
+      #results li + li {
+        border-top: 1px solid color-mix(in srgb, var(--ink) 14%, var(--paper));
+      }
+
+      #results .title {
+        font-size: 23px;
+        font-weight: 700;
+        line-height: 1.05;
+      }
+
+      #results .credits {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 6px;
+        line-height: 1.05;
+      }
+
+      #results .artist {
+        font-size: 19px;
+        font-weight: 700;
+      }
+
+      #results .feat {
+        font-size: 19px;
+        font-weight: 700;
+        color: color-mix(in srgb, var(--ink) 45%, var(--paper));
+      }
+
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .empty {
+        margin: 18px 0 0;
+        padding: 0 18px;
+        font-size: 19px;
+        opacity: 0.7;
+        max-height: 80px;
+        transition: opacity 220ms ease, max-height 260ms ease, margin-top 260ms ease;
+      }
+
+      .empty.hide {
+        opacity: 0;
+        max-height: 0;
+        margin-top: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      /* Song view */
+
+      #song {
+        position: fixed;
+        inset: 0;
+        background: var(--paper);
+        overflow-y: auto;
+        display: flex;
+        padding: 32px clamp(24px, 6vw, 48px) 150px;
+        -webkit-mask-image: linear-gradient(
+          to bottom,
+          #000 0,
+          #000 calc(100% - 130px),
+          transparent 100%
+        );
+        mask-image: linear-gradient(
+          to bottom,
+          #000 0,
+          #000 calc(100% - 130px),
+          transparent 100%
+        );
+      }
+
+      .song-inner {
+        width: 100%;
+        max-width: 900px;
+        margin: auto;
+      }
+
+      #song-title {
+        font-size: 23px;
+        font-weight: 700;
+        line-height: 1.05;
+      }
+
+      .song-credits {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 6px;
+        margin-top: 4px;
+        line-height: 1.05;
+      }
+
+      #song-artist {
+        font-size: 19px;
+        font-weight: 700;
+      }
+
+      #song-feat {
+        font-size: 19px;
+        font-weight: 700;
+        color: color-mix(in srgb, var(--ink) 45%, var(--paper));
+      }
+
+      #song-note p {
+        margin: 0 0 0.6em;
+      }
+
+      #song-note a {
+        color: inherit;
+        text-decoration-thickness: 3px;
+        text-underline-offset: 6px;
+      }
+
+      #song-note {
+        margin: 30px 0 0;
+        font-size: 48px;
+        line-height: 1.22;
+        font-weight: 700;
+      }
+
+      .close {
+        position: fixed;
+        bottom: 34px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 30;
+        width: 50px;
+        height: 50px;
+        border: none;
+        border-radius: 999px;
+        background: var(--ink);
+        color: var(--paper);
+        font-size: 26px;
+        line-height: 1;
+        cursor: pointer;
+        transition: opacity 240ms ease, transform 240ms cubic-bezier(0.2, 0.7, 0.3, 1),
+          visibility 0s, background-color 320ms ease, color 320ms ease;
+      }
+
+      .close.hide {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateX(-50%) scale(0.75);
+        transition-delay: 0s, 0s, 240ms, 0s, 0s;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      @media (min-width: 760px) {
+        #song-note {
+          font-size: 52px;
+        }
+
+        #home,
+        #home.active {
+          display: grid;
+          grid-template-columns: min(560px, 100%);
+          grid-template-rows: 1fr 1fr;
+          justify-content: center;
+          align-items: stretch;
+          padding: 0 var(--gutter);
+        }
+
+        .search-wrap,
+        #home.active .search-wrap {
+          display: contents;
+        }
+
+        .results-stack {
+          margin-top: 0;
+        }
+
+        .field,
+        #home.active .field {
+          position: static;
+          bottom: auto;
+          transform: none;
+          grid-column: 1;
+          grid-row: 1;
+          align-self: end;
+          justify-self: stretch;
+          width: auto;
+          max-width: none;
+          margin: 0;
+        }
+
+        .results-area,
+        #home.active .results-area {
+          grid-column: 1;
+          grid-row: 2;
+          align-self: start;
+          justify-self: stretch;
+          width: auto;
+          max-width: none;
+          max-height: 100%;
+          padding: 14px 0 24px;
+          -webkit-mask-image: linear-gradient(
+            to bottom,
+            #000 0,
+            #000 calc(100% - 60px),
+            transparent 100%
+          );
+          mask-image: linear-gradient(
+            to bottom,
+            #000 0,
+            #000 calc(100% - 60px),
+            transparent 100%
+          );
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 1ms !important;
+          transition-duration: 1ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main id="home">
+      <div class="search-wrap">
+        <div class="results-area">
+          <div class="results-stack">
+            <ul id="results"></ul>
+            <p class="empty hide" id="empty">Not on the playlist. Try the artist instead.</p>
+          </div>
+        </div>
+        <label class="field" for="q">
+          <svg width="19" height="19" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <circle cx="8" cy="8" r="5.25" stroke="currentColor" stroke-width="1.8" />
+            <path d="M12 12L16 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          </svg>
+          <input id="q" type="search" autocomplete="off" placeholder="Search for a song" />
+          <button class="clear" id="clear" type="button" aria-label="Clear search">
+            <svg width="19" height="19" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <path d="M4.5 4.5L13.5 13.5M13.5 4.5L4.5 13.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </button>
+        </label>
+      </div>
+    </main>
+
+    <section id="song" class="hide">
+      <div class="song-inner">
+        <div id="song-title"></div>
+        <div class="song-credits">
+          <span id="song-artist"></span>
+          <span id="song-feat"></span>
+        </div>
+        <div id="song-note"></div>
+      </div>
+    </section>
+    <button class="close hide" id="close" title="Close">&#10005;</button>
+
+    <script>
+      const SONGS = [
+        {
+          title: "Cuando Apagas la Luz",
+          artist: "Sordromo",
+          feat: "",
+          note: "Sordromo was a Uruguayan band I used to listen to as a teenager, and back then I was more into their rockier, louder songs. But after a long time I got back to them through this track, with a softer, deeper pace. The chorus says “y cuando apagás la luz te desarmás”, which would translate to “when you turn off the lights, you disarm yourself”, as in letting your guard down, being vulnerable, or, in the case of the song, taking your masks off. Those little moments when we feel safe enough to let go. I love that idea.",
+        },
+        {
+          title: "Índios - Ao Vivo Em São Paulo / 1999",
+          artist: "Legião Urbana",
+          feat: "",
+          note: "A bit of classic Brazilian rock here, from a band that split up in the late 90s but still has a solid fanbase. I like how this song talks about the disappointment of seeing the world for what it is, dealing with the empty feeling of missing things he never lived. And how he tried to cry about it, but couldn’t. There’s also a nice cover by Luciano Supervielle, a Uruguayan musician.",
+        },
+        {
+          title: "Romix",
+          artist: "Miranda!",
+          feat: "",
+          note: "Miranda! is a classic pop band from Argentina, around since the early 2000s and quite big in the Latin queer community. I got into them from the start, which earned me some “you’re so gay!” finger-pointing in high school. “Romix” is very well done. It’s a song about sexual attraction, and it transmits that 100%: a thrilling, constant beat and lyrics I was too young to get back then. Pretty sexual but not explicit, more like sensual and metaphorical. Side note: I like to think that listening to Miranda! and Green Day at the same time was part of my charm that no one got back in those days haha.",
+        },
+        {
+          title: "Te Besé",
+          artist: "Cursi",
+          feat: "",
+          note: "This song is so Montevideo, and probably not many people know it: the way he sings, his accent, the things he mentions, and the mix of local genres in its music. I really like it, but what makes me love it is the pull it has on me, taking me right back to Montevideo.",
+        },
+        {
+          title: "Morrissey",
+          artist: "Leo García",
+          feat: "",
+          note: "A classic of Argentinian pop from the early 2000s, mostly because of the lyrics. It basically says “Does your girlfriend know that we listen to Morrissey?”, a coded way of saying they’re gay and having an affair. It’s quite a messy lyric, but the Morrissey code is great, a kind of different “Are you a friend of Dorothy?”",
+        },
+        {
+          title: "Monte Nativo",
+          artist: "Campo",
+          feat: "",
+          note: "This song is like listening to Uruguay by the beach; the sounds of the little bugs and the wind in the background bring me pure joy. Juan Campodónico composed it for a ballet in Uruguay, which makes an interesting contrast: the refinement of ballet against the raw nature of the montes nativos. He’s always been great at mixing different styles, especially combining local sounds with pop and electronic music. If you like that kind of stuff, check out his other project, Bajofondo, where they mix tango and electronic music. Funny thing: I was a big fan of his in my early 20s, and nowadays he’s the partner of a friend of mine.",
+        },
+        {
+          title: "Quizá, Quizá, Quizá",
+          artist: "Max Capote",
+          feat: "Dani Umpi",
+          note: "I chose this track for two reasons: it’s a cover of a song you might know, and it’s a way to introduce you to Dani Umpi (the featured artist). He’s the most important queer artist in Uruguay. He has done some books and movies, but mostly music. I was never able to get that much into it (it’s a very particular kind of alternative pop), but I deeply respect and admire him for the courage it must have taken to be that artist since the 90s in a small country in Latin America. The queer scene in Montevideo owes him a lot.",
+        },
+        {
+          title: "Soledad y el Mar (feat. Los Macorinos)",
+          artist: "Natalia Lafourcade",
+          feat: "Los Macorinos",
+          note: "Natalia Lafourcade has one of the most beautiful voices in Latin America. She started in Latin pop as a teenager, but over the years she has brought more Mexican folk music into her work. This song has always caught me with the softness of the pace and her voice: how she stretches those smooth notes and then contrasts them with silent pauses, leaving them hanging there in the absence.",
+        },
+        {
+          title: "Hablando a Tu Corazón",
+          artist: "Charly García",
+          feat: "Pedro Aznar",
+          note: "As a kid, Charly García was that rebellious rock artist my older brothers loved and my parents hated them listening to. So for me he always felt like this “you shouldn’t listen to him” artist haha. I remember you told me you had a similar thing with Lady Gaga. Anyway, years later I actually got into him and realized that his music was nothing like the image I had built in my mind. It was light and refreshing, totally aligned with the music and artists I liked.",
+        },
+        {
+          title: "Algo Está Cambiando",
+          artist: "Bomba Estéreo",
+          feat: "",
+          note: "This song takes me straight into a jungle on a clear night. It’s similar to what Monte Nativo does (also on the playlist), but to a place I’ve never been. Bomba Estéreo is a band from Colombia that does some amazing mixing of Latin pop, electronic music, and Afrobeat. I think they have one of the most interesting sounds in Latin music. I’d also recommend the rest of this album, and their live session for KEXP on YouTube.",
+        },
+        {
+          title: "La Gente Que Habla Sola",
+          artist: "Attaque 77",
+          feat: "",
+          note: "This song is one of my all-time favorites. Attaque 77 is an Argentinian punk band that was a big thing during my high school years, and they always carried this sentimental, working-class-hero style in their lyrics. The song talks about the personal suffering each of us carries, and how easily we can get trapped in that feeling and distance ourselves, to the point that a simple “Hola, cómo estás?” can mean the world. What makes me love this song is the narrative of the lyrics, combined with a melody that shifts from a lonely melancholy to a hopeful and promising ending.",
+        },
+        {
+          title: "Sueno en Paraguay - El Búho Remix",
+          artist: "Chancha Vía Circuito",
+          feat: "El Búho",
+          note: "Another case of mixing local and global, something that always draws me in. If you liked Bomba Estéreo or “Monte Nativo”, I think you’ll like this one too. It takes that feeling of nature at night to a higher level. Chancha Vía Circuito is an Argentinian DJ who fuses electronic music with Latin sounds like cumbia, folklore and native instruments. There’s always a lot of nature in his music, which builds these oneiric scenes.",
+        },
+        {
+          title: "Cosas Imposibles",
+          artist: "Gustavo Cerati",
+          feat: "",
+          note: "This song is a key memory of my teenage days, when I was getting into music. I remember my uncle gave me this album for my birthday, as a way of putting good music on my radar haha. I loved it right away. It has this ageless sound that’s still present in my taste today. Gustavo Cerati was one of the most important musicians in Latin rock and alternative music. I’d totally dig deeper if you like this style, because there’s a lot to discover in his work.",
+        },
+        {
+          title: "Rasguña las Piedras",
+          artist: "Sui Generis",
+          feat: "",
+          note: "“Rasguña las Piedras” will always live in my mind as a campfire song, a classic on school camping trips. It has this uplifting energy that always puts a smile on my face for some reason. Besides his solo career, Sui Generis and Serú Girán were Charly García’s two main other projects in the 70s and 80s, so this one makes a nice complement to “3AM” on your list. Also, listening to it again now, after so long, makes me think about how much it sounds like a Latin version of Cat Stevens haha.",
+        },
+        {
+          title: "Love",
+          artist: "Zoé",
+          feat: "",
+          note: "As a teen I had MTV Mexico on our cable TV, which made me listen to many Mexican artists that weren’t that well known in the south. That’s how I got to know Zoé, with this song, and it captivated me right away. It translates that euphoric feeling of love into lyrics about a dreamlike planet where he got stuck, with three suns, transparent mountains, and anemones of light. I was fascinated by the landscape those lines build. They also have a nice MTV Unplugged album that you might like.",
+        },
+        {
+          title: "Life On Mars?",
+          artist: "Seu Jorge",
+          feat: "",
+          note: "If you like David Bowie, I think you’ll enjoy this one. The Brazilian musician Seu Jorge covered Bowie songs for the Wes Anderson movie “The Life Aquatic with Steve Zissou”, turning them not only into this unplugged sound but also reworking the lyrics entirely in Portuguese. He didn’t just translate them. He turned them into their own thing while keeping the essence of the originals. As a Bowie fan, I was captivated by the mix here, which makes this album a charming piece of Brazilian music, in my opinion.",
+        },
+        {
+          title: "Como Eran Las Cosas",
+          artist: "Babasónicos",
+          feat: "",
+          note: "The first time I saw Babasónicos live I was like 15, and they came on stage covered in some kind of oversized capes, with colored flashlights, as if they were aliens coming out of a spaceship haha. That image is still stuck in my mind. This is a band that has been with me since I was a teen. They made great music back then, and they still do. This song in particular shows a softer side of them, which I think you’ll enjoy. I’ve always loved the vocals in their music: the lead singer has this unique voice, kind of rough and smooth at the same time.",
+        },
+        {
+          title: "Te Vas a Acordar de Mí",
+          artist: "Franny Glass",
+          feat: "",
+          note: "Franny Glass was one of the leading names in Uruguay’s indie music scene in the early 2000s. I love the soft, playful style that shapes his voice, music, and lyrics. This song, for instance, is about how guilt will come back to hit someone who hurt him: when they least expect it, they’ll feel something that reminds them of what they did. It’s the kind of feeling we know we need to work on and tame, but sometimes we just want to let it out a little bit.",
+        },
+        {
+          title: "Carmesí (Versión Campo)",
+          artist: "Campo",
+          feat: "",
+          note: "Campo was a music project by Juan Campodónico (also behind “Monte Nativo”, on this playlist) with some other Uruguayan artists, and I was quite a fan of them during college. Here they cover an original song by Martín Rivero (the one singing), and they manage to translate all the acoustic melancholy it had into a mix of pop, electronic, and some slowed-down local beats. I think the final product is something between cathartic and organic, while keeping a certain sadness.",
+        },
+        {
+          title: "Hoy No",
+          artist: "Entre Ríos",
+          feat: "",
+          note: "I hadn’t listened to this song in a long, long time. When I was putting the list together, I remembered it and managed to find it. I got to know it back in high school and was hypnotized by its sound: a cutting guitar, some kind of uplifting bass in the background, and a melodic voice that’s almost like another instrument. Altogether, it’s quite a piece in its own right. I was just reading that it actually has like 30 different sounds sampled into it, which makes a lot of sense. They’re from Argentina, and the band’s name, Entre Ríos, is the name of a province there (I guess they might be from there haha).",
+        },
+        {
+          title: "Knockin' On Heaven's Door",
+          artist: "Bob Dylan",
+          feat: "",
+          note: "Is this one of the most significant songs in rock history? Probably, yes. But for me it will always be the opening of a Supernatural episode, where Dean is dreaming of them as kids celebrating the 4th of July, feeling pure happiness. Suddenly the fireworks start turning into gunshots as he remembers they were actually shot and killed. I love the whole scene, and the music choice works amazingly, not only because of the title.",
+        },
+        {
+          title: "Young Folks",
+          artist: "Peter Bjorn and John",
+          feat: "",
+          note: "2007: me starting college and meeting new people with music taste similar to mine, something that didn’t happen at all in high school. That year I got deep into indie, and this song led the way. Today it’s more of a nice memory than one of my favorites from that time. But it will always pull me back to that first year of college and to my friend Meli :)",
+        },
+        {
+          title: "Casimir Pulaski Day",
+          artist: "Sufjan Stevens",
+          feat: "",
+          note: "Sufjan Stevens always gives me an uplifting feeling, like he’s taking me for a ride, floating around. But in this song it’s the lyrics that get me. The way he tells the story of this person dying, and then of him dealing with the absence, is heartbreaking. And how the Lord takes, and he takes, and he takes… All of this disguised under a soft, inspiring melody.",
+        },
+        {
+          title: "Step",
+          artist: "Vampire Weekend",
+          feat: "",
+          note: "I used to listen to Vampire Weekend a lot during the 2010s, and they’re one of the few bands from back then I still love. This album kind of closed a trilogy in their discography, and it has this lovely melancholy sound all around. “Step” is by far one of my favorites of theirs, full of warmth and softness in its pace. And the video is beautiful, simple yet graphically delightful.",
+        },
+        {
+          title: "Dilemma",
+          artist: "Nelly",
+          feat: "Kelly Rowland",
+          note: "Two years ago, at a festival in Uruguay, I saw a live set by the Colombian artist Lido Pimienta, who has a style very similar to Chancha Vía Circuito (“Sueño en Paraguay”, also on the playlist). She often takes pop songs and reworks them with Latin genres, and that night she played a cumbia version of this song. Sadly, I could never find a recording of it, but I have a video in case you want to see it. The original, the one here, is a cheesy R&B-pop song from 2002 with a great xylophone-like melody alongside the vocals, which is what made the cumbia version work so well.\n\nSide note: even though it wasn’t really my kind of music, the original always stuck with me. It reminds me of the year I kind of became a teenager, moving from cartoons to TV shows and watching MTV. The music video has this absurd moment where Kelly Rowland texts Nelly through an Excel sheet on her phone hahaha. Check it out here.",
+          link: {"text": "here", "url": "https://www.instagram.com/reel/DeY7X0NBLA7/"},
+        },
+        {
+          title: "12:51",
+          artist: "The Strokes",
+          feat: "",
+          note: "2003: teen Maurito was full-on MTV and came across this song with a sound he couldn’t really understand, but that made him feel so good. That keyboard and the neon look of the video, just delightful! Since then, I love it when I randomly check the time and it’s 12:51. I don’t know why, but it’s always a nice micro-moment. Some people have that with 11:11.",
+        },
+        {
+          title: "London",
+          artist: "Jerskin Fendrix",
+          feat: "",
+          note: "This song is the definition of adulthood for me, the perfect mix of acceptance and melancholy. It’s part of the Poor Things soundtrack, a movie that portrays the journey of growing up. If you haven’t watched it, stop here, go watch it, and come back to finish reading :) In the last act, back in London, Bella finally accepts that the things she loves are not perfect, that the world is damaged but also beautiful, and that she will never again see it as perfect as she did when she was younger. That acceptance is what growing up is, I think.",
+        },
+        {
+          title: "Laura",
+          artist: "Scissor Sisters",
+          feat: "",
+          note: "Scissor Sisters is a band I didn’t appreciate as much as I should have when I was a teen. I did like them and listened to some of their songs, but in retrospect I feel they had much more to offer than what I was taking from them. Nowadays I love their mix of pop, instrumentals, strong vocals, and a big, queer, theatrical style. I got to know them through this song back then, and 22 years later it just got better.",
+        },
+        {
+          title: "Nothing To Declare",
+          artist: "MGMT",
+          feat: "",
+          note: "This year I reconnected with MGMT after a long time. They were one of my top bands in college, but for some reason I lost track of them later. I found this song among their latest releases, and I’m still digesting its bittersweet lyrics, but I guess it doesn’t have to explain itself to me :D Still, it’s among the best songs I came across this year, and the video is great too.",
+        },
+      ];
+
+      const PLACEHOLDER_NOTE = "Note still to be written.";
+
+      function fold(text) {
+        return text
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+      }
+
+      const SEARCHABLE = SONGS.filter(
+        (item) => item.note && item.note !== PLACEHOLDER_NOTE,
+      ).map((item) => ({
+        ...item,
+        haystack: fold([item.title, item.artist, item.feat].join(" ")),
+      }));
+
+      const input = document.getElementById("q");
+      const results = document.getElementById("results");
+      const resultsArea = document.querySelector(".results-area");
+      const empty = document.getElementById("empty");
+      const home = document.getElementById("home");
+      const song = document.getElementById("song");
+      const closeButton = document.getElementById("close");
+
+      let renderedKey = "";
+
+      function render(matches) {
+        const key = matches.map((item) => item.title).join("|");
+        if (key === renderedKey) return;
+        renderedKey = key;
+        results.replaceChildren();
+        matches.forEach((item, index) => {
+          const li = document.createElement("li");
+          li.style.animationDelay = index * 45 + "ms";
+          const title = document.createElement("span");
+          title.className = "title";
+          title.textContent = item.title;
+          const artist = document.createElement("span");
+          artist.className = "artist";
+          artist.textContent = item.artist;
+          const credits = document.createElement("div");
+          credits.className = "credits";
+          credits.append(artist);
+          if (item.feat) {
+            const feat = document.createElement("span");
+            feat.className = "feat";
+            feat.textContent = "with " + item.feat;
+            credits.append(feat);
+          }
+          li.append(title, credits);
+          li.addEventListener("click", () => open(item));
+          results.append(li);
+        });
+        resultsArea.scrollTop = 0;
+      }
+
+      function search() {
+        const q = fold(input.value.trim());
+        input.parentElement.classList.toggle("filled", input.value.length > 0);
+        if (!q) {
+          render([]);
+          empty.classList.add("hide");
+          return;
+        }
+        const matches = SEARCHABLE.filter((item) => item.haystack.includes(q));
+        render(matches);
+        empty.classList.toggle("hide", matches.length > 0);
+      }
+
+      function renderNote(el, item) {
+        el.replaceChildren();
+        const paragraphs = (item.note || PLACEHOLDER_NOTE).split(/\n\s*\n/);
+        paragraphs.forEach((text, i) => {
+          const p = document.createElement("p");
+          const link = item.link;
+          const at = link && i === paragraphs.length - 1 ? text.lastIndexOf(link.text) : -1;
+          if (at >= 0) {
+            const a = document.createElement("a");
+            a.href = link.url;
+            a.target = "_blank";
+            a.rel = "noopener";
+            a.textContent = link.text;
+            p.append(text.slice(0, at), a, text.slice(at + link.text.length));
+          } else {
+            p.textContent = text;
+          }
+          el.append(p);
+        });
+      }
+
+      function open(item) {
+        document.getElementById("song-title").textContent = item.title;
+        document.getElementById("song-artist").textContent = item.artist;
+        document.getElementById("song-feat").textContent = item.feat
+          ? "with " + item.feat
+          : "";
+        renderNote(document.getElementById("song-note"), item);
+        input.blur();
+        home.classList.add("hide");
+        song.scrollTop = 0;
+        song.classList.remove("hide");
+        closeButton.classList.remove("hide");
+      }
+
+      function close() {
+        song.classList.add("hide");
+        closeButton.classList.add("hide");
+        home.classList.remove("hide");
+        home.classList.remove("active");
+        input.value = "";
+        search();
+      }
+
+      function setViewportHeight() {
+        const viewport = window.visualViewport;
+        const height = viewport ? viewport.height : window.innerHeight;
+        document.documentElement.style.setProperty("--vh", height + "px");
+        if (window.scrollY !== 0) window.scrollTo(0, 0);
+      }
+
+      setViewportHeight();
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", setViewportHeight);
+        window.visualViewport.addEventListener("scroll", setViewportHeight);
+      }
+      window.addEventListener("resize", setViewportHeight);
+      window.addEventListener("orientationchange", setViewportHeight);
+
+      input.addEventListener("focus", () => home.classList.add("active"));
+      input.addEventListener("blur", () => {
+        if (!input.value) home.classList.remove("active");
+      });
+
+      input.addEventListener("input", search);
+      document.getElementById("clear").addEventListener("click", () => {
+        input.value = "";
+        input.focus();
+        search();
+      });
+      closeButton.addEventListener("click", close);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !song.classList.contains("hide")) close();
+      });
+    </script>
+  </body>
+</html>
